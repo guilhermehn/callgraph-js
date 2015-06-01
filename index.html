@@ -111,7 +111,7 @@ var graph = {
 
       if (d !== '') {
         var color = hslToRgb(Math.random(), Math.random() * 0.4 + 0.3, Math.random() * 0.2 + 0.5);
-        var node = '<path style=\'stroke: ' + color + '\' d=\'' + d + '\'></path>';
+        var node = '<path style="stroke: ' + color + '" d="' + d + '"></path>';
         arrowNodes += node + '\n';
       }
     }
@@ -131,7 +131,7 @@ var graph = {
       var name = funcsObj.getDisplayName(drawFunc);
       var x = pos.x;
       var y = Math.round(pos.y + 5);
-      var node = '<text id=\'fn' + drawFunc + '\' x=' + x + ' y=' + y + ' onclick=\'clickFunc(' + drawFunc + ')\'>' + name + '</text>';
+      var node = '<text id="fn' + drawFunc + '" x=' + x + ' y=' + y + ' onclick="clickFunc(' + drawFunc + ')">' + name + '</text>';
       textNodes += node + '\n';
     }
 
@@ -147,24 +147,25 @@ var graph = {
     var avgx = (fromx + tox) / 2;
     var loopSize = 12;
     var yDiff = 20; // Math.abs(toy-fromy)/10;
-    var code = 'M ' + fromx + ' ' + fromy;
+    var lines = [['M', fromx, fromy].join(' ')];
 
     if (tox < fromx) {
       if (fromy === toy) {
-        code += ' C ' + (fromx + 20) + ' ' + fromy + ' , ' + (fromx + 20) + ' ' + (toy - loopSize) + ', ' + fromx + ' ' + (toy - loopSize);
-        code += ' L ' + tox + ' ' + (toy - loopSize);
-        code += ' C ' + (tox - 20) + ' ' + (toy - loopSize) + ', ' + (tox - 20) + ' ' + toy + ', ' + tox + ' ' + toy;
+        lines.push(['C', fromx + 20, fromy, ',', fromx + 20, toy - loopSize, ',', fromx, toy - loopSize].join(' '));
+        lines.push(['L', tox, toy - loopSize].join(' '));
+        lines.push(['C', tox - 20, toy - loopSize, ',', tox - 20, toy, ',', tox, toy].join(' '));
       }
       else {
-        code += ' C ' + Math.max(avgx, fromx + 150) + ' ' + fromy + ', ' + Math.min(avgx, tox - 150) + ' ' + toy + ', ' + tox + ' ' + toy;
+        lines.push(['C', Math.max(avgx, fromx + 150), fromy, ',', Math.min(avgx, tox - 150), toy, ',', tox, toy].join(' '));
       }
     }
     else {
-      code += ' C ' + Math.max(avgx, fromx + yDiff) + ' ' + fromy + ', ' + Math.min(avgx, tox - yDiff) + ' ' + toy + ', ' + tox + ' ' + toy;
+      lines.push(['C', Math.max(avgx, fromx + yDiff), fromy, ',', Math.min(avgx, tox - yDiff), toy, ',', tox, toy].join(' '));
     }
 
-    code += ' M ' + (tox - 7) + ' ' + (toy - 5) + ' L ' + tox + ' ' + toy + ' L ' + (tox - 7) + ' ' + (toy + 5);
-    return code;
+    lines.push(['M', tox - 7, toy - 5, 'L', tox, toy, 'L', tox - 7, toy + 5].join(' '));
+
+    return lines.join(' ');
   }
 };
 
@@ -606,6 +607,15 @@ function FuncInfo (parent, name, displayName, objName, paramsString, funcBody, s
   };
 }
 
+function sortByIdealY (a, b) {
+  if (a.idealY < b.idealY) {
+    return -1;
+  }
+  else {
+    return 1;
+  }
+}
+
 function LevelObj () {
   this.funcs = [];
   this.funcsCount = 0;
@@ -769,14 +779,7 @@ LevelsObj.prototype.sortLevelBr = function (lev) {
     };
   }
 
-  temp.sort(function (a, b) {
-    if (a.idealY < b.idealY) {
-      return -1;
-    }
-    else {
-      return 1;
-    }
-  });
+  temp.sort(sortByIdealY);
 
   for (var b = 0; b < this.levels[lev].funcsCount; b++) {
     this.levels[lev].funcs[b] = temp[b].func;
@@ -816,14 +819,7 @@ LevelsObj.prototype.sortLevelSll = function (lev) {
     };
   }
 
-  temp.sort(function (a, b) {
-    if (a.idealY < b.idealY) {
-      return -1;
-    }
-    else {
-      return 1;
-    }
-  });
+  temp.sort(sortByIdealY);
 
   for (var b = 0; b < this.levels[lev].funcsCount; b++) {
     this.levels[lev].funcs[b] = temp[b].func;
@@ -845,6 +841,30 @@ function fourDec (n) {
   return Math.round(n * 10000) / 10000;
 }
 
+function hue2rgb (p, q, t) {
+  if (t < 0) {
+    t += 1;
+  }
+
+  if (t > 1) {
+    t -= 1;
+  }
+
+  if (t < 1 / 6) {
+    return p + (q - p) * 6 * t;
+  }
+
+  if (t < 1 / 2) {
+    return q;
+  }
+
+  if (t < 2 / 3) {
+    return p + (q - p) * (2 / 3 - t) * 6;
+  }
+
+  return p;
+}
+
 function hslToRgb (h, s, l) {
   var r;
   var g;
@@ -854,30 +874,6 @@ function hslToRgb (h, s, l) {
     r = g = b = l;
   }
   else {
-    function hue2rgb (p, q, t) {
-      if (t < 0) {
-        t += 1;
-      }
-
-      if (t > 1) {
-        t -= 1;
-      }
-
-      if (t < 1 / 6) {
-        return p + (q - p) * 6 * t;
-      }
-
-      if (t < 1 / 2) {
-        return q;
-      }
-
-      if (t < 2 / 3) {
-        return p + (q - p) * (2 / 3 - t) * 6;
-      }
-
-      return p;
-    }
-
     var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
     var p = 2 * l - q;
     r = hue2rgb(p, q, h + 1 / 3);
@@ -890,14 +886,15 @@ function hslToRgb (h, s, l) {
 
 function exportSvg () {
   var text = 'Copy and paste to following text into a new file and save as .svg';
-  text += '<textarea style=\'width: 100%;\' rows=20 wrap=\'logical\'><?xml version=\'1.0\'?>';
-  text += document.getElementById('divSvg').innerHTML+'<\/textarea>';
+  text += '<textarea style="width: 100%;" rows=20 wrap="logical"><?xml version="1.0"?>';
+  text += document.getElementById('divSvg').innerHTML + '<\/textarea>';
 
   // var svgwin = window.open('', 'Function Graph'+Math.floor(Math.random()*1000)+'.html');
   // svgwin.document.write(document.getElementById('divSvg').innerHTML);
 
   document.getElementById('export_div').innerHTML = text;
 }
+
 
   </textarea>
 
@@ -912,7 +909,7 @@ function exportSvg () {
   <div id="export_div"></div>
 
   <script src="parse.js"></script>
-  <script src="index.js"></script>
+  <script src="dist/index.js"></script>
 
   <script>updateGraph();</script>
 </body>

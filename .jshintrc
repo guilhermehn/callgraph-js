@@ -37,6 +37,7 @@
   "devel"         : true,
   "browser"       : true,
   "mocha"         : true,
+  "esnext"        : true,
   "globals": {
     "importScripts": true,
     "Worker": true,
