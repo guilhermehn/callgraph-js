@@ -141,17 +141,6 @@ function hslToRgb (h, s, l) {
   return 'rgb(' + Math.round(r * 255) + ', ' + Math.round(g * 255) + ', ' + Math.round(b * 255) + ')';
 }
 
-function exportSvg () {
-  var text = 'Copy and paste to following text into a new file and save as .svg';
-  text += '<textarea style="width: 100%;" rows=20 wrap="logical"><?xml version="1.0"?>';
-  text += document.getElementById('divSvg').innerHTML + '<\/textarea>';
-
-  // var svgwin = window.open('', 'Function Graph'+Math.floor(Math.random()*1000)+'.html');
-  // svgwin.document.write(document.getElementById('divSvg').innerHTML);
-
-  document.getElementById('export_div').innerHTML = text;
-}
-
 /*
  Classes
  */
@@ -197,14 +186,14 @@ class FuncsObj {
     return this.count - 1;
   }
 
-  findFuncs (parent, tree) {
+  findFunctions (parent, tree) {
     var index;
     var name;
     var p;
 
     if (tree[0] === 'defun') { // function foo () {
       index = funcsObj.add(parent, tree[1], tree[1], tree[1], tree[2], tree[3], false);
-      this.findFuncs(index, tree[3]);
+      this.findFunctions(index, tree[3]);
       tree[3] = null;
       tree[0] = 'xdefun';
     }
@@ -213,7 +202,7 @@ class FuncsObj {
         if (getName(parent, tree[2]).found) { // ?.?.? = function () {
           var getname = getName(parent, tree[2]);
           index = funcsObj.add(parent, getname.name, getname.displayName, getname.objName, tree[3][2], tree[3][3], false);
-          this.findFuncs(index, tree[3][3]);
+          this.findFunctions(index, tree[3][3]);
           tree[3][3] = null;
           tree[3][0] = 'xfunction';
         }
@@ -224,7 +213,7 @@ class FuncsObj {
         for (p = 0; p < tree[3][1].length; p++) {
           if (tree[3][1][p][1][0] === 'function') {// foo: function () {
             index = funcsObj.add(parent, tree[3][1][p][0], getname.displayName + '.' + tree[3][1][p][0], getname.displayName, tree[3][1][p][1][2], tree[3][1][p][1][3], false);
-            this.findFuncs(index, tree[3][1][p][1][3]);
+            this.findFunctions(index, tree[3][1][p][1][3]);
             tree[3][1][p][1][3] = null;
             tree[3][1][p][1][0] = 'xfunction';
           }
@@ -236,7 +225,7 @@ class FuncsObj {
         if (tree[1][v].length > 1 && tree[1][v][1][0] === 'function') { // var foo = function () {
           index = funcsObj.add(parent, tree[1][v][0], tree[1][v][0], tree[1][v][0], tree[1][v][1][2], tree[1][v][1][3], false);
 
-          this.findFuncs(index, tree[1][v][1][3]);
+          this.findFunctions(index, tree[1][v][1][3]);
 
           tree[1][v][1][3] = null;
           tree[1][v][1][0] = 'xfunction';
@@ -245,7 +234,7 @@ class FuncsObj {
           for (p = 0; p < tree[1][v][1][1].length; p++) {
             if (tree[1][v][1][1][p][1][0] === 'function') {// foo: function () {
               index = funcsObj.add(parent, tree[1][v][1][1][p][0], tree[1][v][0] + '.' + tree[1][v][1][1][p][0], tree[1][v][0], tree[1][v][1][1][p][1][2], tree[1][v][1][1][p][1][3], false);
-              this.findFuncs(index, tree[1][v][1][1][p][1][3]);
+              this.findFunctions(index, tree[1][v][1][1][p][1][3]);
               tree[1][v][1][1][p][1][3] = null;
               tree[1][v][1][1][p][1][0] = 'xfunction';
             }
@@ -256,15 +245,15 @@ class FuncsObj {
     else if (tree[0] === 'call' && tree[1][0] === 'function') { // (function ?() {})()
       if (tree[1][1] === null) {
         anonymousCount++;
-        name = '[Self calling anonymous function ' + anonymousCount + ']';
+        name = `[Self calling anonymous function ${anonymousCount}]`;
         tree[1][1] = name; // give anonymous function a name
         index = funcsObj.add(parent, name, name, name, tree[1][2], tree[1][3], true);
       }
       else {
-        name = '[Self calling anonymous function ' + tree[1][1] + ']';
+        name = `[Self calling anonymous function ${tree[1][1]}]`;
         index = funcsObj.add(parent, tree[1][1], name, name, tree[1][2], tree[1][3], false);
       }
-      this.findFuncs(index, tree[1][3]);
+      this.findFunctions(index, tree[1][3]);
       tree[1][3] = null;
       tree[1][0] = 'xfunction';
     }
@@ -274,10 +263,10 @@ class FuncsObj {
         if (Array.isArray(tree[1][p]) && Array.isArray(tree[1][p][1]) && tree[1][p][1][0] === 'function') { // foo: function () {
           if (objName === '') {
             anonObjCount++;
-            objName = '[Anonymous object ' + anonObjCount + ']';
+            objName = '[Anonymous object ${anonObjCount}]';
           }
           index = funcsObj.add(parent, tree[1][p][0], objName + '.' + tree[1][p][0], objName, tree[1][p][1][2], tree[1][p][1][3], false);
-          this.findFuncs(index, tree[1][p][1][3]);
+          this.findFunctions(index, tree[1][p][1][3]);
           tree[1][p][1][3] = null;
           tree[1][p][1][0] = 'xfunction';
         }
@@ -286,24 +275,24 @@ class FuncsObj {
     else if (tree[0] === 'function') {
       if (tree[1] === null) { // ? function () {
         anonymousCount++;
-        name = '[Anonymous function ' + anonymousCount + ']';
+        name = '[Anonymous function ${anonymousCount}]';
         index = funcsObj.add(parent, name, name, name, tree[2], tree[3], true);
         tree[1] = name; // give function a name?
-        this.findFuncs(index, tree[3]);
+        this.findFunctions(index, tree[3]);
         tree[3] = null;
         tree[0] = 'xfunction';
       }
       else {
-        name = '[Anonymous function ' + tree[1] + ']';
+        name = '[Anonymous function ${tree[1]}]';
         index = funcsObj.add(parent, tree[1], name, tree[1], tree[2], tree[3], false);
-        this.findFuncs(index, tree[3]);
+        this.findFunctions(index, tree[3]);
         tree[3] = null;
         tree[0] = 'xfunction';
       }
     }
     for (var i = 0;i < tree.length;i++) {
       if (Array.isArray(tree[i]) && tree[i].length > 0) {
-        this.findFuncs(parent, tree[i]);
+        this.findFunctions(parent, tree[i]);
       }
     }
   }
@@ -323,7 +312,7 @@ class FuncsObj {
     if (findCount <= 1) {
       return keepI;
     }
-    else if (obj !== '') {
+    else if (obj.length) {
       if (obj === 'this') {
         obj = funcsObj.funcs[index].objName;
       }
@@ -335,7 +324,7 @@ class FuncsObj {
       }
     }
 
-    this.duplicatedNames += name + ' ';
+    this.duplicatedNames += `${name} `;
 
     return -1; // not found
   }
@@ -727,25 +716,23 @@ var graph = {
   scale: 1,
 
   makeGraphData () {
-    var i;
     var done = false;
-
     var levelsCount = 0;
+
     levelsObj = new LevelsObj();
     funcsObj.ungraphAll();
 
     while (!done) {
       done = true;
       let someFound = false;
+
       levelsObj.createNext();
 
-      i = -1;
-
-      while (++i < funcsObj.count) {
-        if (!funcsObj.funcs[i].graphed) {
+      funcsObj.funcs.forEach((func, i) => {
+        if (!func.graphed) {
           done = false;
 
-          let parent = funcsObj.funcs[i].parent;
+          let parent = func.parent;
           let isValidParent = parent === -1 || funcsObj.funcs[parent].graphing;
 
           if (!funcsObj.pointedByNongraphed(i) && isValidParent) {
@@ -754,43 +741,39 @@ var graph = {
             someFound = true;
           }
         }
-      }
+      });
 
       if (!done && !someFound) {
-        var busyHigh = 0;
-        var busyest = 0;
+        let busyHigh = 0;
+        let busyest = 0;
 
-        i = -1;
-
-        while (++i < funcsObj.count) {
-          if (!funcsObj.funcs[i].graphed) {
-            var busy = funcsObj.pointedByGraphedCount(i) + funcsObj.funcs[i].references.length;
+        funcsObj.funcs.forEach((func, i) => {
+          if (!func.graphed) {
+            let busy = funcsObj.pointedByGraphedCount(i) + func.references.length;
 
             if (busy > busyHigh) {
               busyHigh = busy;
               busyest = i;
             }
           }
-        }
+        });
 
         let objName = funcsObj.funcs[busyest].objName;
 
-        i = -1;
-
-        while (++i < funcsObj.count) {
-          if (funcsObj.funcs[i].objName === objName && !funcsObj.funcs[i].graphed) {
+        funcsObj.funcs.forEach((func, i) => {
+          if (func.objName === objName && !func.graphed) {
             // 2nd cond. not needed
             levelsObj.addFunc(levelsCount, i);
             funcsObj.funcs[i].graphing = true;
           }
-        }
+        });
       }
 
-      i = -1;
+      funcsObj.funcs = funcsObj.funcs.map((func) => {
+        func.graphed = func.graphing;
 
-      while (++i < funcsObj.count) {
-        funcsObj.funcs[i].graphed = funcsObj.funcs[i].graphing;
-      }
+        return func;
+      });
 
       levelsCount++;
     }
@@ -801,99 +784,96 @@ var graph = {
   },
 
   drawGraph () {
-    var divSvg = document.getElementById('divSvg');
-    var graphSvg = document.getElementById('graphSvg');
-    var arrowsEl = document.getElementById('arrowsEl');
-    var textEl = document.getElementById('textEl');
+    var divSvg = document.querySelector('#divSvg');
+    var graphSvg = document.querySelector('#graphSvg');
+    var arrowsEl = document.querySelector('#arrowsEl');
+    var textEl = document.querySelector('#textEl');
     var xwidth = levelsObj.getWidthUpto(levelsObj.levelsCount);
 
     graphSvg.setAttribute('width', Math.min(xwidth * this.scale , 25000));
     graphSvg.setAttribute('height', Math.min((levelsObj.height + 1) * 40 * this.scale , 25000));
-    arrowsEl.setAttribute('transform', 'scale(' + fourDec(this.scale) + ')');
-    textEl.setAttribute('transform', 'scale(' + fourDec(this.scale) + ')');
+    arrowsEl.setAttribute('transform', `scale(${fourDec(this.scale)})`);
+    textEl.setAttribute('transform', `scale(${fourDec(this.scale)})`);
 
     arrowsEl.innerHTML = '';
     textEl.innerHTML = this.getTextNodes();
     divSvg.innerHTML = divSvg.innerHTML; // bug fix
 
-    var arrowNodes = '\n';
-    var i = -1;
-
-    while (++i < funcsObj.count) {
+    var arrowNodes = funcsObj.funcs.reduce((prev, func, i) => {
       let pos = levelsObj.getPos(i);
-      let nameSize = Math.round(document.getElementById('fn' + i).getBoundingClientRect().width / this.scale);
-      // var nameSize = document.getElementById('fn'+i).getBBox().width;
+      let nameSize = Math.round(document.querySelector(`#fn${i}`).getBoundingClientRect().width / this.scale);
 
-      let d = funcsObj.funcs[i].references.reduce((prev, next, i) => {
+      let arrowsCoords = func.references.reduce((arrows, next) => {
         let toPos = levelsObj.getPos(next);
-        let result = this.canvasArrow(pos.x + nameSize + 8, pos.y, toPos.x - 8, toPos.y);
+        let arrow = this.createArrow(pos.x + nameSize + 8, pos.y, toPos.x - 8, toPos.y);
 
-        return `${prev} ${result}`;
+        return `${arrows} ${arrow}`;
       }, '');
 
-      if (d !== '') {
-        var color = hslToRgb(Math.random(), Math.random() * 0.4 + 0.3, Math.random() * 0.2 + 0.5);
-        var node = '<path style="stroke: ' + color + '" d="' + d + '"></path>';
-        arrowNodes += node + '\n';
-      }
-    }
+      if (arrowsCoords.length) {
+        let color = hslToRgb(Math.random(), Math.random() * 0.4 + 0.3, Math.random() * 0.2 + 0.5);
+        let node = `<path style="stroke:${color}" d="${arrowsCoords}"></path>`;
 
-    document.getElementById('export_div').innerHTML = '';
-    document.getElementById('arrowsEl').innerHTML = arrowNodes;
+        return `${prev}\n${node}`;
+      }
+
+      return prev;
+    }, '\n');
+
+    document.querySelector('#export_div').innerHTML = '';
+    document.querySelector('#arrowsEl').innerHTML = arrowNodes;
 
     // bug fix
     divSvg.innerHTML = divSvg.innerHTML;
   },
 
   getTextNodes () {
-    var textNodes = '\n';
-
-    for (var drawFunc = 0; drawFunc < funcsObj.count; drawFunc++) {
-      var pos = levelsObj.getPos(drawFunc);
-      var name = funcsObj.getDisplayName(drawFunc);
+    return funcsObj.funcs.reduce((prev, func, i) => {
+      var pos = levelsObj.getPos(i);
+      var name = funcsObj.getDisplayName(i);
       var x = pos.x;
       var y = Math.round(pos.y + 5);
-      var node = '<text id="fn' + drawFunc + '" x=' + x + ' y=' + y + ' onclick="clickFunc(' + drawFunc + ')">' + name + '</text>';
-      textNodes += node + '\n';
-    }
 
-    return textNodes;
+      var node = `<text id="fn${i}" x=${x} y=${y} onclick="clickFunc(${i})">${name}</text>`;
+
+      return `${prev}\n${node}`;
+    }, '\n');
   },
 
   changeScale (factor) {
     this.scale *= factor;
-    document.getElementById('display_scale').innerHTML = twoDec(this.scale);
+    document.querySelector('#display_scale').innerHTML = twoDec(this.scale);
   },
 
-  canvasArrow (fromx, fromy, tox, toy) {
-    var avgx = (fromx + tox) / 2;
+  createArrow (xOrigin, yOrigin, xDest, yDest) {
+    var avgx = (xOrigin + xDest) / 2;
     var loopSize = 12;
-    var yDiff = 20; // Math.abs(toy-fromy)/10;
-    var lines = [['M', fromx, fromy].join(' ')];
+    var yDiff = 20; // Math.abs(yDest - yOrigin) / 10;
+    var lines = [`M ${xOrigin} ${yOrigin}`];
 
-    if (tox < fromx) {
-      if (fromy === toy) {
-        lines.push(['C', fromx + 20, fromy, ',', fromx + 20, toy - loopSize, ',', fromx, toy - loopSize].join(' '));
-        lines.push(['L', tox, toy - loopSize].join(' '));
-        lines.push(['C', tox - 20, toy - loopSize, ',', tox - 20, toy, ',', tox, toy].join(' '));
+    if (xDest < xOrigin) {
+      if (yOrigin === yDest) {
+        lines.push(`C ${xOrigin + 20} ${yOrigin}, ${xOrigin + 20} ${yDest - loopSize}, ${xOrigin} ${yDest - loopSize}`);
+        lines.push(`L ${xDest} ${yDest - loopSize}`);
+        lines.push(`C ${xDest - 20} ${yDest - loopSize}, ${xDest - 20} ${yDest}, ${xDest} ${yDest}`);
       }
       else {
-        lines.push(['C', Math.max(avgx, fromx + 150), fromy, ',', Math.min(avgx, tox - 150), toy, ',', tox, toy].join(' '));
+        lines.push(`C ${Math.max(avgx, xOrigin + 150)} ${yOrigin}, ${Math.min(avgx, xDest - 150)} ${yDest}, ${xDest} ${yDest}`);
       }
     }
     else {
-      lines.push(['C', Math.max(avgx, fromx + yDiff), fromy, ',', Math.min(avgx, tox - yDiff), toy, ',', tox, toy].join(' '));
+      lines.push(`C ${Math.max(avgx, xOrigin + yDiff)} ${yOrigin}, ${Math.min(avgx, xDest - yDiff)} ${yDest}, ${xDest} ${yDest}`);
     }
 
-    lines.push(['M', tox - 7, toy - 5, 'L', tox, toy, 'L', tox - 7, toy + 5].join(' '));
+    lines.push(`M ${xDest - 7} ${yDest - 5} L ${xDest} ${yDest} L ${xDest - 7} ${yDest + 5}`);
 
     return lines.join(' ');
   }
 };
 
 function updateGraph () {
-  var code = document.getElementById('edit_code').value;
-  document.getElementById('warning').innerHTML = '';
+  var code = document.querySelector('#edit_code').value;
+  document.querySelector('#warning').innerHTML = '';
 
   try {
     ast = parse(code);
@@ -901,15 +881,15 @@ function updateGraph () {
     anonymousCount = 0;
     anonObjCount = 0;
     funcsObj.add(-1, '[Global]', '[Global]', '[Global]', [], ast[1], false);
-    funcsObj.findFuncs(0, ast[1]);
+    funcsObj.findFunctions(0, ast[1]);
     funcsObj.find_refs();
 
     if (funcsObj.duplicatedNames !== '') {
-      document.getElementById('warning').innerHTML = '*Could not match duplicate function name - graph is incomplete: ' + funcsObj.duplicatedNames + '*';
+      document.querySelector('#warning').innerHTML = '*Could not match duplicate function name - graph is incomplete: ' + funcsObj.duplicatedNames + '*';
     }
   }
   catch (err) {
-    document.getElementById('warning').innerHTML = '*Parsing Error: ' + err + '*';
+    document.querySelector('#warning').innerHTML = '*Parsing Error: ' + err + '*';
   }
 
   graph.makeGraphData();
