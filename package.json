@@ -1,0 +1,24 @@
+{
+  "name": "callgraph",
+  "version": "1.0.0",
+  "description": "Generate a call graph of your script",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha tests/"
+  },
+  "keywords": [
+    "call",
+    "graph",
+    "generate"
+  ],
+  "author": "Guilherme Nagatomo",
+  "license": "MIT",
+  "devDependencies": {
+    "gulp": "^3.8.11",
+    "gulp-babel": "^5.1.0",
+    "gulp-jscs": "^1.6.0",
+    "gulp-jshint": "^1.11.0",
+    "gulp-livereload": "^3.8.0",
+    "gulp-load-plugins": "^0.10.0"
+  }
+}

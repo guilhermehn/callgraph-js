@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+</head>
+<body>
+  <textarea name="" id="edit_code" cols="80" rows="30">
+//Example code
+
+function sally() {}
+
+sally.prototype.jim = function (){
+   bert();
+};
+
+sally.prototype.sam = function (){
+   this.jim();
+};
+
+var bert = function () {
+   bert();
+};
+
+function jane() {
+   if ( sally() ){
+      sally.jim();
+   }
+}
+  </textarea>
+
+  <p id="warning"></p>
+  <div id="div_svg">
+    <svg id="graph_svg" height="300" width="500" style="background-color: White;">
+      <g id="arrows_g" style="fill:none; stroke-width: 2; stroke-opacity: 0.75"></g>
+      <g id="text_g" style="font-size: 14px; fill: #000000; fill-opacity: 1; font-family: Sans"></g>
+    </svg>
+  </div>
+
+  <div id="export_div"></div>
+
+  <script src="parse.js"></script>
+  <script src="index.js"></script>
+
+  <script>
+    updateGraph();
+  </script>
+</body>
+</html>
