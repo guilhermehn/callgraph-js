@@ -5,8 +5,8 @@
   <title>Document</title>
 </head>
 <body>
-  <textarea name="" id="edit_code" cols="80" rows="30">
-    // globals parse
+  <textarea id="edit_code">
+ // globals parse
 // Licence CC0 1.0 Universal
 var ast;
 var showParams = true;
@@ -23,7 +23,7 @@ var graph = {
     var done = false;
 
     var levelsCount = 0;
-    levelsObj = new LevelObjectCollection();
+    levelsObj = new LevelsObj();
     funcsObj.ungraphAll();
 
     while (!done) {
@@ -175,7 +175,7 @@ function updateGraph () {
 
   try {
     ast = parse(code);
-    funcsObj = new FunctionObjectCollection();
+    funcsObj = new FuncsObj();
     anonymousCount = 0;
     anonObjCount = 0;
     funcsObj.add(-1, '[Global]', '[Global]', '[Global]', [], ast[1], false);
@@ -262,13 +262,13 @@ function getParamsString (tree) {
   return params + ')';
 }
 
-function FunctionObjectCollection () {
+function FuncsObj () {
   this.funcs = [];
   this.count = 0;
   this.duplicatedNames = '';
 }
 
-FunctionObjectCollection.prototype.add = function (parent, name, displayName, objName, params, funcBody, showParamsByDefault) {
+FuncsObj.prototype.add = function (parent, name, displayName, objName, params, funcBody, showParamsByDefault) {
   var paramsString = getParamsString(params);
 
   this.funcs[this.count] = new FuncInfo(parent, name, displayName, objName, paramsString, funcBody, showParamsByDefault);
@@ -277,7 +277,7 @@ FunctionObjectCollection.prototype.add = function (parent, name, displayName, ob
   return this.count - 1;
 };
 
-FunctionObjectCollection.prototype.findFuncs = function (parent, tree) {
+FuncsObj.prototype.findFuncs = function (parent, tree) {
   var index;
   var name;
   var p;
@@ -388,7 +388,7 @@ FunctionObjectCollection.prototype.findFuncs = function (parent, tree) {
   }
 };
 
-FunctionObjectCollection.prototype.getIndex = function (index, obj, name) {
+FuncsObj.prototype.getIndex = function (index, obj, name) {
   var findCount = 0;
   var keepI = -1; // not found
   var i = 0;
@@ -420,7 +420,7 @@ FunctionObjectCollection.prototype.getIndex = function (index, obj, name) {
   return -1; // not found
 };
 
-FunctionObjectCollection.prototype.find_refs = function () {
+FuncsObj.prototype.find_refs = function () {
   for (var i = 0; i < this.count; i++) {
     if (Array.isArray(this.funcs[i].funcBody)) {
       this.findRefs(i, this.funcs[i].funcBody);
@@ -428,7 +428,7 @@ FunctionObjectCollection.prototype.find_refs = function () {
   }
 };
 
-FunctionObjectCollection.prototype.findRefs = function (index, tree) {
+FuncsObj.prototype.findRefs = function (index, tree) {
   var ref;
   var objName;
 
@@ -501,7 +501,7 @@ FunctionObjectCollection.prototype.findRefs = function (index, tree) {
   }
 };
 
-FunctionObjectCollection.prototype.pointedByNongraphed = function (index) {
+FuncsObj.prototype.pointedByNongraphed = function (index) {
   var obj = this.funcs[index].objName;
   for (var f = 0; f < this.count; f++) {
     if (this.funcs[f].objName === obj) {
@@ -513,7 +513,7 @@ FunctionObjectCollection.prototype.pointedByNongraphed = function (index) {
   return false;
 };
 
-FunctionObjectCollection.prototype.pointedByNongraphed2 = function (index) {
+FuncsObj.prototype.pointedByNongraphed2 = function (index) {
   var objName = this.funcs[index].objName;
   for (var i = 0; i < this.funcs[index].referencedBy.length; i++) {
     if (this.funcs[index].referencedBy[i] !== index) {// ignore self-referenced
@@ -527,7 +527,7 @@ FunctionObjectCollection.prototype.pointedByNongraphed2 = function (index) {
   return false;
 };
 
-FunctionObjectCollection.prototype.pointedByGraphedCount = function (index) {
+FuncsObj.prototype.pointedByGraphedCount = function (index) {
   var count = 0;
   for (var i = 0; i < this.funcs[index].referencedBy.length; i++) {
     if (this.funcs[this.funcs[index].referencedBy[i]].graphed) {
@@ -537,14 +537,14 @@ FunctionObjectCollection.prototype.pointedByGraphedCount = function (index) {
   return count;
 };
 
-FunctionObjectCollection.prototype.ungraphAll = function () {
+FuncsObj.prototype.ungraphAll = function () {
   for (var f = 0; f < this.count; f++) {
     this.funcs[f].graphed = false;
     this.funcs[f].graphing = false;
   }
 };
 
-FunctionObjectCollection.prototype.getDisplayName = function (func) {
+FuncsObj.prototype.getDisplayName = function (func) {
   if (this.isContracted(func)) {
     return this.funcs[func].objName + ' [Obj]';
   }
@@ -556,11 +556,11 @@ FunctionObjectCollection.prototype.getDisplayName = function (func) {
   }
 };
 
-FunctionObjectCollection.prototype.isContracted = function (func) {
+FuncsObj.prototype.isContracted = function (func) {
   return this.funcs[func].contracted;
 };
 
-FunctionObjectCollection.prototype.toggleContracted = function (func) {
+FuncsObj.prototype.toggleContracted = function (func) {
   var contracted = this.funcs[func].contracted;
   for (var f = 0; f < this.count; f++) {
     if (this.funcs[f].objName === this.funcs[func].objName) {
@@ -569,7 +569,7 @@ FunctionObjectCollection.prototype.toggleContracted = function (func) {
   }
 };
 
-FunctionObjectCollection.prototype.isObject = function (func) {
+FuncsObj.prototype.isObject = function (func) {
   var countMatches = 0;
 
   for (var f = 0; f < this.count; f++) {
@@ -616,13 +616,13 @@ function sortByIdealY (a, b) {
   }
 }
 
-function LevelObject () {
+function LevelObj () {
   this.funcs = [];
   this.funcsCount = 0;
   this.width = 0;
 }
 
-function LevelObjectCollection () {
+function LevelsObj () {
   this.leftMargin = 50;
   this.rightMargin = 50;
   this.levels = [];
@@ -630,22 +630,22 @@ function LevelObjectCollection () {
   this.height = 0;
 }
 
-LevelObjectCollection.prototype.createNext = function () {
-  this.levels[this.levelsCount] = new LevelObject();
+LevelsObj.prototype.createNext = function () {
+  this.levels[this.levelsCount] = new LevelObj();
   this.levelsCount++;
 };
 
-LevelObjectCollection.prototype.undoCreateNext = function () {
+LevelsObj.prototype.undoCreateNext = function () {
   this.levelsCount--;
   this.levels[this.levelsCount] = null;
 };
 
-LevelObjectCollection.prototype.addFunc = function (level, func) {
+LevelsObj.prototype.addFunc = function (level, func) {
   this.levels[level].funcs[this.levels[level].funcsCount] = func;
   this.levels[level].funcsCount++;
 };
 
-LevelObjectCollection.prototype.findHeightAndWidth = function () {
+LevelsObj.prototype.findHeightAndWidth = function () {
   for (var l = 0; l < (this.levelsCount); l++) {
     if (this.getLevelHeight(l) > this.height) {
       this.height = this.levels[l].funcsCount;
@@ -661,11 +661,11 @@ LevelObjectCollection.prototype.findHeightAndWidth = function () {
   }
 };
 
-LevelObjectCollection.prototype.getLevelHeight = function (lev) {
+LevelsObj.prototype.getLevelHeight = function (lev) {
   return this.levels[lev].funcsCount;
 };
 
-LevelObjectCollection.prototype.getWidthUpto = function (uptoLev) {
+LevelsObj.prototype.getWidthUpto = function (uptoLev) {
   var totalWidth = 0;
   for (var l = 0; l < uptoLev; l++) {
     totalWidth += this.levels[l].width;
@@ -673,7 +673,7 @@ LevelObjectCollection.prototype.getWidthUpto = function (uptoLev) {
   return totalWidth;
 };
 
-LevelObjectCollection.prototype.getPos = function (func) {
+LevelsObj.prototype.getPos = function (func) {
   var l;
   var f;
   var levelYSpacing;
@@ -729,7 +729,7 @@ LevelObjectCollection.prototype.getPos = function (func) {
   }
 };
 
-LevelObjectCollection.prototype.sortLevels = function () {
+LevelsObj.prototype.sortLevels = function () {
   var l;
 
   for (l = 1; l < this.levelsCount; l++) {
@@ -749,7 +749,7 @@ LevelObjectCollection.prototype.sortLevels = function () {
   }
 };
 
-LevelObjectCollection.prototype.sortLevelBr = function (lev) {
+LevelsObj.prototype.sortLevelBr = function (lev) {
   var temp = [];
   var idealY;
 
@@ -786,7 +786,7 @@ LevelObjectCollection.prototype.sortLevelBr = function (lev) {
   }
 };
 
-LevelObjectCollection.prototype.sortLevelSll = function (lev) {
+LevelsObj.prototype.sortLevelSll = function (lev) {
   var temp = [];
   var r;
 

@@ -187,9 +187,8 @@ class FunctionObjectCollection {
   }
 
   findFunctions (parent, tree) {
-    var index;
-    var name;
-    var p;
+    let index;
+    let name;
 
     if (tree[0] === 'defun') { // function foo () {
       index = funcsObj.add(parent, tree[1], tree[1], tree[1], tree[2], tree[3], false);
@@ -200,47 +199,48 @@ class FunctionObjectCollection {
     else if (tree[0] === 'assign' && Array.isArray(tree[3])) { // ?=
       if (tree[3][0] === 'function') { // ? = function () {
         if (getName(parent, tree[2]).found) { // ?.?.? = function () {
-          var getname = getName(parent, tree[2]);
-          index = funcsObj.add(parent, getname.name, getname.displayName, getname.objName, tree[3][2], tree[3][3], false);
+          name = getName(parent, tree[2]);
+
+          index = funcsObj.add(parent, name.name, name.displayName, name.objName, tree[3][2], tree[3][3], false);
           this.findFunctions(index, tree[3][3]);
           tree[3][3] = null;
           tree[3][0] = 'xfunction';
         }
       }
       else if (tree[3][0] === 'object' && getName(parent, tree[2]).found) {// ?.?.? = object
-        var getname = getName(parent, tree[2]);
+        name = getName(parent, tree[2]);
 
-        for (p = 0; p < tree[3][1].length; p++) {
-          if (tree[3][1][p][1][0] === 'function') {// foo: function () {
-            index = funcsObj.add(parent, tree[3][1][p][0], getname.displayName + '.' + tree[3][1][p][0], getname.displayName, tree[3][1][p][1][2], tree[3][1][p][1][3], false);
-            this.findFunctions(index, tree[3][1][p][1][3]);
-            tree[3][1][p][1][3] = null;
-            tree[3][1][p][1][0] = 'xfunction';
+        tree[3][1].forEach((node) => {
+          if (node[1][0] === 'function') { // foo: function () {
+            index = funcsObj.add(parent, node[0], name.displayName + '.' + node[0], name.displayName, node[1][2], node[1][3], false);
+            this.findFunctions(index, node[1][3]);
+            node[1][3] = null;
+            node[1][0] = 'xfunction';
           }
-        }
+        }, this);
       }
     }
     else if (tree[0] === 'var') {
-      for (var v = 0; v < tree[1].length; v++) {
-        if (tree[1][v].length > 1 && tree[1][v][1][0] === 'function') { // var foo = function () {
-          index = funcsObj.add(parent, tree[1][v][0], tree[1][v][0], tree[1][v][0], tree[1][v][1][2], tree[1][v][1][3], false);
+      tree[1].forEach((node) => {
+        if (node.length > 1 && node[1][0] === 'function') { // var foo = function () {
+          index = funcsObj.add(parent, node[0], node[0], node[0], node[1][2], node[1][3], false);
 
-          this.findFunctions(index, tree[1][v][1][3]);
+          this.findFunctions(index, node[1][3]);
 
-          tree[1][v][1][3] = null;
-          tree[1][v][1][0] = 'xfunction';
+          node[1][3] = null;
+          node[1][0] = 'xfunction';
         }
-        else if (tree[1][v].length > 1 && tree[1][v][1][0] === 'object') {// search object
-          for (p = 0; p < tree[1][v][1][1].length; p++) {
-            if (tree[1][v][1][1][p][1][0] === 'function') {// foo: function () {
-              index = funcsObj.add(parent, tree[1][v][1][1][p][0], tree[1][v][0] + '.' + tree[1][v][1][1][p][0], tree[1][v][0], tree[1][v][1][1][p][1][2], tree[1][v][1][1][p][1][3], false);
-              this.findFunctions(index, tree[1][v][1][1][p][1][3]);
-              tree[1][v][1][1][p][1][3] = null;
-              tree[1][v][1][1][p][1][0] = 'xfunction';
+        else if (node.length > 1 && node[1][0] === 'object') { // search object
+          node[1][1].forEach((subnode) => {
+            if (subnode[1][0] === 'function') {// foo: function () {
+              index = funcsObj.add(parent, subnode[0], node[0] + '.' + subnode[0], node[0], subnode[1][2], subnode[1][3], false);
+              this.findFunctions(index, subnode[1][3]);
+              subnode[1][3] = null;
+              subnode[1][0] = 'xfunction';
             }
-          }
+          }, this);
         }
-      }
+      }, this);
     }
     else if (tree[0] === 'call' && tree[1][0] === 'function') { // (function ?() {})()
       if (tree[1][1] === null) {
@@ -253,24 +253,27 @@ class FunctionObjectCollection {
         name = `[Self calling anonymous function ${tree[1][1]}]`;
         index = funcsObj.add(parent, tree[1][1], name, name, tree[1][2], tree[1][3], false);
       }
+
       this.findFunctions(index, tree[1][3]);
       tree[1][3] = null;
       tree[1][0] = 'xfunction';
     }
     else if (tree[0] === 'object' && Array.isArray(tree[1])) { // ?{ object }
-      var objName = '';
-      for (p = 0; p < tree[1].length; p++) {
-        if (Array.isArray(tree[1][p]) && Array.isArray(tree[1][p][1]) && tree[1][p][1][0] === 'function') { // foo: function () {
+      let objName = '';
+
+      tree[1].forEach((node) => {
+        if (Array.isArray(node) && Array.isArray(node[1]) && node[1][0] === 'function') { // foo: function () {
           if (objName === '') {
             anonObjCount++;
             objName = `[Anonymous object ${anonObjCount}]`;
           }
-          index = funcsObj.add(parent, tree[1][p][0], objName + '.' + tree[1][p][0], objName, tree[1][p][1][2], tree[1][p][1][3], false);
-          this.findFunctions(index, tree[1][p][1][3]);
-          tree[1][p][1][3] = null;
-          tree[1][p][1][0] = 'xfunction';
+
+          index = funcsObj.add(parent, node[0], objName + '.' + node[0], objName, node[1][2], node[1][3], false);
+          this.findFunctions(index, node[1][3]);
+          node[1][3] = null;
+          node[1][0] = 'xfunction';
         }
-      }
+      }, this);
     }
     else if (tree[0] === 'function') {
       if (tree[1] === null) { // ? function () {
@@ -278,23 +281,22 @@ class FunctionObjectCollection {
         name = `[Anonymous function ${anonymousCount}]`;
         index = funcsObj.add(parent, name, name, name, tree[2], tree[3], true);
         tree[1] = name; // give function a name?
-        this.findFunctions(index, tree[3]);
-        tree[3] = null;
-        tree[0] = 'xfunction';
       }
       else {
         name = `[Anonymous function ${tree[1]}]`;
         index = funcsObj.add(parent, tree[1], name, tree[1], tree[2], tree[3], false);
-        this.findFunctions(index, tree[3]);
-        tree[3] = null;
-        tree[0] = 'xfunction';
       }
+
+      this.findFunctions(index, tree[3]);
+      tree[3] = null;
+      tree[0] = 'xfunction';
     }
-    for (var i = 0;i < tree.length;i++) {
-      if (Array.isArray(tree[i]) && tree[i].length > 0) {
-        this.findFunctions(parent, tree[i]);
+
+    tree.forEach((node) => {
+      if (Array.isArray(node) && node.length > 0) {
+        this.findFunctions(parent, node);
       }
-    }
+    }, this);
   }
 
   getIndex (index, obj, name) {
@@ -447,13 +449,9 @@ class FunctionObjectCollection {
   }
 
   pointedByGraphedCount (index) {
-    var count = 0;
-    for (var i = 0; i < this.funcs[index].referencedBy.length; i++) {
-      if (this.funcs[this.funcs[index].referencedBy[i]].graphed) {
-        count++;
-      }
-    }
-    return count;
+    let references = this.funcs[index].referencedBy;
+
+    return references.filter(ref => this.funcs[ref].graphed, this).length;
   }
 
   ungraphAll () {
@@ -738,8 +736,8 @@ var graph = {
   scale: 1,
 
   makeGraphData () {
-    var done = false;
-    var levelsCount = 0;
+    let done = false;
+    let levelsCount = 0;
 
     levelsObj = new LevelObjectCollection();
     funcsObj.ungraphAll();
@@ -851,12 +849,11 @@ var graph = {
 
   getTextNodes () {
     return funcsObj.funcs.reduce((prev, func, i) => {
-      var pos = levelsObj.getPos(i);
-      var name = funcsObj.getDisplayName(i);
-      var x = pos.x;
-      var y = Math.round(pos.y + 5);
+      let pos = levelsObj.getPos(i);
+      let name = funcsObj.getDisplayName(i);
+      let y = Math.round(pos.y + 5);
 
-      var node = `<text id="fn${i}" x=${x} y=${y} onclick="clickFunc(${i})">${name}</text>`;
+      let node = `<text id="fn${i}" x=${pos.x} y=${y}>${name}</text>`;
 
       return `${prev}\n${node}`;
     }, '\n');
@@ -909,13 +906,15 @@ function updateGraph () {
     if (funcsObj.duplicatedNames !== '') {
       document.querySelector('#warning').innerHTML = '*Could not match duplicate function name - graph is incomplete: ' + funcsObj.duplicatedNames + '*';
     }
+    else {
+      graph.makeGraphData();
+      graph.drawGraph();
+    }
   }
   catch (err) {
     document.querySelector('#warning').innerHTML = '*Parsing Error: ' + err + '*';
+    console.error(`Parse error: ${err.message}`, err);
   }
-
-  graph.makeGraphData();
-  graph.drawGraph();
 }
 
 function clickFunc (index) {
