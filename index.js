@@ -170,7 +170,7 @@ class FuncInfo {
   }
 }
 
-class FuncsObj {
+class FunctionObjectCollection {
   constructor () {
     this.funcs = [];
     this.count = 0;
@@ -263,7 +263,7 @@ class FuncsObj {
         if (Array.isArray(tree[1][p]) && Array.isArray(tree[1][p][1]) && tree[1][p][1][0] === 'function') { // foo: function () {
           if (objName === '') {
             anonObjCount++;
-            objName = '[Anonymous object ${anonObjCount}]';
+            objName = `[Anonymous object ${anonObjCount}]`;
           }
           index = funcsObj.add(parent, tree[1][p][0], objName + '.' + tree[1][p][0], objName, tree[1][p][1][2], tree[1][p][1][3], false);
           this.findFunctions(index, tree[1][p][1][3]);
@@ -275,7 +275,7 @@ class FuncsObj {
     else if (tree[0] === 'function') {
       if (tree[1] === null) { // ? function () {
         anonymousCount++;
-        name = '[Anonymous function ${anonymousCount}]';
+        name = `[Anonymous function ${anonymousCount}]`;
         index = funcsObj.add(parent, name, name, name, tree[2], tree[3], true);
         tree[1] = name; // give function a name?
         this.findFunctions(index, tree[3]);
@@ -283,7 +283,7 @@ class FuncsObj {
         tree[0] = 'xfunction';
       }
       else {
-        name = '[Anonymous function ${tree[1]}]';
+        name = `[Anonymous function ${tree[1]}]`;
         index = funcsObj.add(parent, tree[1], name, tree[1], tree[2], tree[3], false);
         this.findFunctions(index, tree[3]);
         tree[3] = null;
@@ -298,16 +298,15 @@ class FuncsObj {
   }
 
   getIndex (index, obj, name) {
-    var findCount = 0;
-    var keepI = -1; // not found
-    var i = 0;
+    let findCount = 0;
+    let keepI = -1; // not found
 
-    for (i = 0; i < this.count; i++) {
-      if (name === this.funcs[i].name) {
+    this.funcs.forEach((func, i) => {
+      if (name === func.name) {
         findCount++;
         keepI = i;
       }
-    }
+    }, this);
 
     if (findCount <= 1) {
       return keepI;
@@ -317,7 +316,7 @@ class FuncsObj {
         obj = funcsObj.funcs[index].objName;
       }
 
-      for (i = 0; i < this.count; i++) {
+      for (let i = 0; i < this.count; i++) {
         if (name === this.funcs[i].name && obj === this.funcs[i].objName) {
           return i;
         }
@@ -330,20 +329,21 @@ class FuncsObj {
   }
 
   find_refs () {
-    for (var i = 0; i < this.count; i++) {
-      if (Array.isArray(this.funcs[i].funcBody)) {
-        this.findRefs(i, this.funcs[i].funcBody);
+    this.funcs.forEach((func, i) => {
+      if (Array.isArray(func.funcBody)) {
+        this.findRefs(i, func.funcBody);
       }
-    }
+    }, this);
   }
 
   findRefs (index, tree) {
-    var ref;
-    var objName;
+    let ref;
+    let objName;
 
-    if (tree[0] === 'call' && tree[1][0] === 'name') { // bar()
-      // out += tree[1]+'; ';
+    if (tree[0] === 'call' && tree[1][0] === 'name') {
+      // Direct function call: `bar()`
       ref = this.getIndex(index, '', tree[1][1]);
+
       if (ref !== -1) {
         funcsObj.funcs[index].addReference(ref);
         funcsObj.funcs[ref].addReferencedBy(index);
@@ -351,37 +351,47 @@ class FuncsObj {
     }
     else if (tree[0] === 'call' && tree[1][0] === 'dot') {
       if (tree[1][2] === 'call' || tree[1][2] === 'apply') {
-        if (tree[1][1][0] === 'name') { // foo.call() or foo.apply()
+        if (tree[1][1][0] === 'name') {
+          // Function call/apply: `foo.call()` or `foo.apply()`
           ref = this.getIndex(index, '', tree[1][1][1]);
+
           if (ref !== -1) {
             funcsObj.funcs[index].addReference(ref);
             funcsObj.funcs[ref].addReferencedBy(index);
           }
         }
-        else if (tree[1][1][0] === 'dot') { // ?.foo.call()
-          if (tree[1][1][1][0] === 'name') { // foo.bar.call()
+        else if (tree[1][1][0] === 'dot') {
+          // Property method call: `foo.bar.call()`
+          if (tree[1][1][1][0] === 'name') {
             objName = tree[1][1][1][1];
           }
-          else {// ?.foo.bar.call()
+          else {
+            // Subproperty method call: `obj.foo.bar.call()`
             objName = tree[1][1][1][2];
           }
+
           ref = this.getIndex(index, objName, tree[1][1][2]);
+
           if (ref !== -1) {
             funcsObj.funcs[index].addReference(ref);
             funcsObj.funcs[ref].addReferencedBy(index);
           }
         }
       }
-      else {  // ?.bar()
-        if (tree[1][1][0] === 'name') { // foo.bar()
+      else {
+        // Direct method call: `foo.bar()`
+        if (tree[1][1][0] === 'name') {
           ref = this.getIndex(index, tree[1][1][1], tree[1][2]);
+
           if (ref !== -1) {
             funcsObj.funcs[index].addReference(ref);
             funcsObj.funcs[ref].addReferencedBy(index);
           }
         }
-        else {// ?.foo.bar()
+        else {
+          // Property method call: `foo.bar.call()`
           ref = this.getIndex(index, tree[1][1][2], tree[1][2]);
+
           if (ref !== -1) {
             funcsObj.funcs[index].addReference(ref);
             funcsObj.funcs[ref].addReferencedBy(index);
@@ -389,51 +399,51 @@ class FuncsObj {
         }
       }
     }
-    else if (tree[0] === 'call' && tree[1][0] === 'xfunction') {// (function () {})()
+    else if (tree[0] === 'call' && tree[1][0] === 'xfunction') {
+      // Anonymous Self Invoking Function: `(function () {})()`
       ref = this.getIndex(index, '', tree[1][1]);
+
       if (ref !== -1) {
         funcsObj.funcs[index].addReference(ref);
         funcsObj.funcs[ref].addReferencedBy(index);
       }
     }
-    else if (tree[0] === 'new' && tree[1][0] === 'name') { // new foo()
+    else if (tree[0] === 'new' && tree[1][0] === 'name') {
+      // New instance: `new foo()`
       ref = this.getIndex(index, '', tree[1][1]);
+
       if (ref !== -1) {
         funcsObj.funcs[index].addReference(ref);
         funcsObj.funcs[ref].addReferencedBy(index);
       }
     }
-    for (var i = 0;i < tree.length;i++) {
-      if (Array.isArray(tree[i])) {
-        this.findRefs(index, tree[i]);
+
+    tree.forEach((node) => {
+      if (Array.isArray(node)) {
+        this.findRefs(index, node);
       }
-    }
+    }, this);
   }
 
   pointedByNongraphed (index) {
-    var obj = this.funcs[index].objName;
-    for (var f = 0; f < this.count; f++) {
-      if (this.funcs[f].objName === obj) {
-        if (this.pointedByNongraphed2(f)) {
-          return true;
-        }
-      }
-    }
-    return false;
+    let obj = this.funcs[index].objName;
+
+    return this.funcs.some((func, i) => {
+      return func.objName === obj && this.pointedByNongraphed2(i);
+    });
   }
 
   pointedByNongraphed2 (index) {
-    var objName = this.funcs[index].objName;
-    for (var i = 0; i < this.funcs[index].referencedBy.length; i++) {
-      if (this.funcs[index].referencedBy[i] !== index) {// ignore self-referenced
-        if (objName !== '' && objName !== this.funcs[this.funcs[index].referencedBy[i]].objName) {
-          if (!this.funcs[this.funcs[index].referencedBy[i]].graphed) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
+    let node = this.funcs[index];
+    let objName = node.objName;
+
+    return node.referencedBy.some((ref) => {
+      let func = this.funcs[ref];
+      let validIndex = ref !== index; // ignore self-referenced
+      let validName = objName !== '' && objName !== func.objName;
+
+      return validIndex && validName && !func.graphed;
+    }, this);
   }
 
   pointedByGraphedCount (index) {
@@ -447,54 +457,49 @@ class FuncsObj {
   }
 
   ungraphAll () {
-    for (var f = 0; f < this.count; f++) {
-      this.funcs[f].graphed = false;
-      this.funcs[f].graphing = false;
-    }
+    this.funcs = this.funcs.map((func) => {
+      func.graphed = func.graphing = false;
+
+      return func;
+    });
   }
 
   getDisplayName (func) {
-    if (this.isContracted(func)) {
-      return this.funcs[func].objName + ' [Obj]';
+    if (this.funcs[func].contracted) {
+      return  `${this.funcs[func].objName} [Obj]`;
     }
     else if (showParams || this.funcs[func].showParamsByDefault) {
-      return this.funcs[func].displayName + this.funcs[func].paramsString;
+      return `${this.funcs[func].displayName} ${this.funcs[func].paramsString}`;
     }
     else {
       return this.funcs[func].displayName;
     }
   }
 
-  isContracted (func) {
-    return this.funcs[func].contracted;
-  }
-
   toggleContracted (func) {
-    var contracted = this.funcs[func].contracted;
-    for (var f = 0; f < this.count; f++) {
-      if (this.funcs[f].objName === this.funcs[func].objName) {
-        this.funcs[f].contracted = !contracted;
+    let obj = this.funcs[func];
+    let contracted = obj.contracted;
+    let name = obj.objName;
+
+    this.funcs = this.funcs.map((fn) => {
+      if (fn.objName === name) {
+        fn.contracted = !contracted;
       }
-    }
+
+      return fn;
+    });
   }
 
-  isObject (func) {
-    var countMatches = 0;
+  isObject (index) {
+    let name = this.funcs[index].objName;
 
-    for (var f = 0; f < this.count; f++) {
-      if (this.funcs[f].objName === this.funcs[func].objName) {
-        countMatches++;
-        if (countMatches > 1) {
-          return true;
-        }
-      }
-    }
-
-    return false;
+    return this.funcs.some((fn) => {
+      return fn.objName === name;
+    });
   }
 }
 
-class LevelObj {
+class LevelObject {
   constructor () {
     this.funcs = [];
     this.funcsCount = 0;
@@ -502,7 +507,7 @@ class LevelObj {
   }
 }
 
-class LevelsObj {
+class LevelObjectCollection {
   constructor () {
     this.leftMargin = 50;
     this.rightMargin = 50;
@@ -512,7 +517,7 @@ class LevelsObj {
   }
 
   createNext () {
-    this.levels[this.levelsCount] = new LevelObj();
+    this.levels[this.levelsCount] = new LevelObject();
     this.levelsCount++;
   }
 
@@ -527,80 +532,96 @@ class LevelsObj {
   }
 
   findHeightAndWidth () {
-    for (var l = 0; l < (this.levelsCount); l++) {
-      if (this.getLevelHeight(l) > this.height) {
-        this.height = this.levels[l].funcsCount;
-      }
-      var widest = 0;
-      for (var w = 0; w < this.levels[l].funcsCount; w++) {
-        var displayNameLength = funcsObj.getDisplayName(this.levels[l].funcs[w]).length;
-        if (displayNameLength > widest) {
-          widest = displayNameLength;
-        }
-      }
-      this.levels[l].width = this.leftMargin + widest * 8 + this.rightMargin;
-    }
-  }
+    let i = -1;
 
-  getLevelHeight (lev) {
-    return this.levels[lev].funcsCount;
+    while (++i < this.levelsCount) {
+      let level = this.levels[i];
+
+      if (level.funcsCount > this.height) {
+        this.height = level.funcsCount;
+      }
+
+      let widestNameLength = level.funcs.reduce((widest, func, i) => {
+        var displayNameLength = funcsObj.getDisplayName(i).length;
+
+        if (displayNameLength > widest) {
+          return displayNameLength;
+        }
+
+        return widest;
+      }, 0, this);
+
+      this.levels[i].width = this.leftMargin + widestNameLength * 8 + this.rightMargin;
+    }
   }
 
   getWidthUpto (uptoLev) {
-    var totalWidth = 0;
-    for (var l = 0; l < uptoLev; l++) {
-      totalWidth += this.levels[l].width;
+    let totalWidth = 0;
+    let i = -1;
+
+    while (++i < uptoLev) {
+      totalWidth += this.levels[i].width;
     }
+
     return totalWidth;
   }
 
   getPos (func) {
-    var l;
-    var f;
-    var levelYSpacing;
+    let levelYSpacing;
+    let i = -1;
 
-    if (!funcsObj.isContracted(func)) {
-      for (l = 0; l < this.levelsCount; l++) {
-        for (f = 0; f < this.levels[l].funcsCount; f++) {
-          if (this.levels[l].funcs[f] === func) {
-            levelYSpacing = this.height / this.levels[l].funcsCount;
+    while (++i < this.levelsCount) {
+      if (!funcsObj.funcs[func].contracted) {
+        let j = -1;
+        let level = this.levels[i];
+
+        while (++j < level.funcsCount) {
+          if (level.funcs[j] === func) {
+            levelYSpacing = this.height / level.funcsCount;
+
             return {
-              x: this.getWidthUpto(l) + this.leftMargin,
-              y: Math.round(f * levelYSpacing * 40 + levelYSpacing * 20 + 20)
+              x: this.getWidthUpto(i) + this.leftMargin,
+              y: Math.round(j * levelYSpacing * 40 + levelYSpacing * 20 + 20)
             };
           }
         }
       }
-    }
-    else {
-      for (l = 0; l < this.levelsCount; l++) {
-        var keepF;
-        var matches = 0;
-        for (f = 0; f < this.levels[l].funcsCount; f++) {
-          if (funcsObj.funcs[this.levels[l].funcs[f]].objName === funcsObj.funcs[func].objName) {
+      else {
+        let j = -1;
+        let level = this.levels[i];
+        let keepF;
+        let matches = 0;
+
+        while (++j < level.funcsCount) {
+          if (funcsObj.funcs[level.funcs[j]].objName === funcsObj.funcs[func].objName) {
             matches++;
-            keepF = f;
+            keepF = j;
           }
         }
+
         if (matches === 1) {
-          levelYSpacing = this.height / this.levels[l].funcsCount;
+          levelYSpacing = this.height / level.funcsCount;
+
           return {
-            x: this.getWidthUpto(l) + this.leftMargin,
+            x: this.getWidthUpto(i) + this.leftMargin,
             y: Math.round(keepF * levelYSpacing * 40 + levelYSpacing * 20 + 20)
           };
         }
         else if (matches > 1) {
-          var matchToUse = Math.floor((matches + 1) / 2);
-          var matches2 = 0;
-          for (f = 0; f < this.levels[l].funcsCount; f++) {
-            if (funcsObj.funcs[this.levels[l].funcs[f]].objName ==
-                                  funcsObj.funcs[func].objName) {
-              matches2++;
-              if (matches2 === matchToUse) {
-                levelYSpacing = this.height / this.levels[l].funcsCount;
+          let matchToUse = Math.floor((matches + 1) / 2);
+          let matches = 0;
+          let j = -1;
+
+          while (++j < level.funcsCount) {
+            if (funcsObj.funcs[level.funcs[j]].objName == funcsObj.funcs[func].objName) {
+              matches++;
+
+              if (matches === matchToUse) {
+                levelYSpacing = this.height / level.funcsCount;
+
                 return {
-                  x: this.getWidthUpto(l) + this.leftMargin,
-                  y: Math.round(f * levelYSpacing * 40 + levelYSpacing * 20 + 20)
+                  x: this.getWidthUpto(i) + this.leftMargin,
+                  y: Math.round(j * levelYSpacing * 40 + levelYSpacing * 20 + 20)
                 };
               }
             }
@@ -654,6 +675,7 @@ class LevelsObj {
       else {
         idealY = this.getPos(this.levels[lev].funcs[f]).y;
       }
+
       temp[f] = {
         func: this.levels[lev].funcs[f],
         idealY: idealY
@@ -719,7 +741,7 @@ var graph = {
     var done = false;
     var levelsCount = 0;
 
-    levelsObj = new LevelsObj();
+    levelsObj = new LevelObjectCollection();
     funcsObj.ungraphAll();
 
     while (!done) {
@@ -877,7 +899,7 @@ function updateGraph () {
 
   try {
     ast = parse(code);
-    funcsObj = new FuncsObj();
+    funcsObj = new FunctionObjectCollection();
     anonymousCount = 0;
     anonObjCount = 0;
     funcsObj.add(-1, '[Global]', '[Global]', '[Global]', [], ast[1], false);
@@ -896,9 +918,9 @@ function updateGraph () {
   graph.drawGraph();
 }
 
-function clickFunc (func) {
-  if (funcsObj.isObject(func)) {
-    funcsObj.toggleContracted(func);
+function clickFunc (index) {
+  if (funcsObj.isObject(index)) {
+    funcsObj.toggleContracted(index);
     updateGraph();
   }
 }
