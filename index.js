@@ -4,7 +4,6 @@
 // Licence CC0 1.0 Universal
 var ast;
 var showParams = true;
-var anonObjCount;
 var funcsObj;
 var levelsObj;
 
@@ -908,7 +907,6 @@ function updateGraph () {
 
   if (ast) {
     funcsObj = new FunctionObjectCollection();
-    anonObjCount = 0;
     funcsObj.add(-1, '[Global]', '[Global]', '[Global]', [], ast[1], false);
     funcsObj.findFunctions(0, ast[1]);
     funcsObj.find_refs();
