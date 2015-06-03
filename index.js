@@ -144,14 +144,13 @@ function hslToRgb (h, s, l) {
  */
 
 class FuncInfo {
-  constructor (parent, name, displayName, objName, paramsString, funcBody, showParamsByDefault) {
+  constructor (parent, name, displayName, objName, paramsString, funcBody) {
     this.parent = parent;
     this.name = name;
     this.displayName = displayName;
     this.objName = objName;
     this.paramsString = paramsString;
     this.funcBody = funcBody;
-    this.showParamsByDefault = showParamsByDefault;
     this.references = [];
     this.referencedBy = [];
     this.graphing = false;
@@ -177,10 +176,10 @@ class FunctionObjectCollection {
     this.anonymousObjects = 0;
   }
 
-  add (parent, name, displayName, objName, params, funcBody, showParamsByDefault) {
+  add (parent, name, displayName, objName, params, funcBody) {
     var paramsString = getParamsString(params);
 
-    this.funcs[this.count] = new FuncInfo(parent, name, displayName, objName, paramsString, funcBody, showParamsByDefault);
+    this.funcs[this.count] = new FuncInfo(parent, name, displayName, objName, paramsString, funcBody);
     this.count++;
 
     return this.count - 1;
@@ -191,7 +190,7 @@ class FunctionObjectCollection {
     let name;
 
     if (tree[0] === 'defun') { // function foo () {
-      index = funcsObj.add(parent, tree[1], tree[1], tree[1], tree[2], tree[3], false);
+      index = funcsObj.add(parent, tree[1], tree[1], tree[1], tree[2], tree[3]);
       this.findFunctions(index, tree[3]);
       tree[3] = null;
       tree[0] = 'xdefun';
@@ -201,7 +200,7 @@ class FunctionObjectCollection {
         if (getName(parent, tree[2]).found) { // ?.?.? = function () {
           name = getName(parent, tree[2]);
 
-          index = funcsObj.add(parent, name.name, name.displayName, name.objName, tree[3][2], tree[3][3], false);
+          index = funcsObj.add(parent, name.name, name.displayName, name.objName, tree[3][2], tree[3][3]);
           this.findFunctions(index, tree[3][3]);
           tree[3][3] = null;
           tree[3][0] = 'xfunction';
@@ -212,7 +211,7 @@ class FunctionObjectCollection {
 
         tree[3][1].forEach((node) => {
           if (node[1][0] === 'function') { // foo: function () {
-            index = funcsObj.add(parent, node[0], name.displayName + '.' + node[0], name.displayName, node[1][2], node[1][3], false);
+            index = funcsObj.add(parent, node[0], name.displayName + '.' + node[0], name.displayName, node[1][2], node[1][3]);
             this.findFunctions(index, node[1][3]);
             node[1][3] = null;
             node[1][0] = 'xfunction';
@@ -223,7 +222,7 @@ class FunctionObjectCollection {
     else if (tree[0] === 'var') {
       tree[1].forEach((node) => {
         if (node.length > 1 && node[1][0] === 'function') { // var foo = function () {
-          index = funcsObj.add(parent, node[0], node[0], node[0], node[1][2], node[1][3], false);
+          index = funcsObj.add(parent, node[0], node[0], node[0], node[1][2], node[1][3]);
 
           this.findFunctions(index, node[1][3]);
 
@@ -233,7 +232,7 @@ class FunctionObjectCollection {
         else if (node.length > 1 && node[1][0] === 'object') { // search object
           node[1][1].forEach((subnode) => {
             if (subnode[1][0] === 'function') {// foo: function () {
-              index = funcsObj.add(parent, subnode[0], node[0] + '.' + subnode[0], node[0], subnode[1][2], subnode[1][3], false);
+              index = funcsObj.add(parent, subnode[0], node[0] + '.' + subnode[0], node[0], subnode[1][2], subnode[1][3]);
               this.findFunctions(index, subnode[1][3]);
               subnode[1][3] = null;
               subnode[1][0] = 'xfunction';
@@ -247,11 +246,11 @@ class FunctionObjectCollection {
         this.anonymousFunctions += 1;
         name = `[Self calling anonymous function ${this.anonymousFunctions}]`;
         tree[1][1] = name; // give anonymous function a name
-        index = funcsObj.add(parent, name, name, name, tree[1][2], tree[1][3], true);
+        index = funcsObj.add(parent, name, name, name, tree[1][2], tree[1][3]);
       }
       else {
         name = `[Self calling anonymous function ${tree[1][1]}]`;
-        index = funcsObj.add(parent, tree[1][1], name, name, tree[1][2], tree[1][3], false);
+        index = funcsObj.add(parent, tree[1][1], name, name, tree[1][2], tree[1][3]);
       }
 
       this.findFunctions(index, tree[1][3]);
@@ -268,7 +267,7 @@ class FunctionObjectCollection {
             objName = `[Anonymous object ${this.anonymousObjects}]`;
           }
 
-          index = funcsObj.add(parent, node[0], objName + '.' + node[0], objName, node[1][2], node[1][3], false);
+          index = funcsObj.add(parent, node[0], objName + '.' + node[0], objName, node[1][2], node[1][3]);
           this.findFunctions(index, node[1][3]);
           node[1][3] = null;
           node[1][0] = 'xfunction';
@@ -279,12 +278,12 @@ class FunctionObjectCollection {
       if (tree[1] === null) { // ? function () {
         this.anonymousFunctions += 1;
         name = `[Anonymous function ${this.anonymousFunctions}]`;
-        index = funcsObj.add(parent, name, name, name, tree[2], tree[3], true);
+        index = funcsObj.add(parent, name, name, name, tree[2], tree[3]);
         tree[1] = name; // give function a name?
       }
       else {
         name = `[Anonymous function ${tree[1]}]`;
-        index = funcsObj.add(parent, tree[1], name, tree[1], tree[2], tree[3], false);
+        index = funcsObj.add(parent, tree[1], name, tree[1], tree[2], tree[3]);
       }
 
       this.findFunctions(index, tree[3]);
@@ -466,11 +465,8 @@ class FunctionObjectCollection {
     if (this.funcs[func].contracted) {
       return  `${this.funcs[func].objName} [Obj]`;
     }
-    else if (showParams || this.funcs[func].showParamsByDefault) {
-      return `${this.funcs[func].displayName} ${this.funcs[func].paramsString}`;
-    }
     else {
-      return this.funcs[func].displayName;
+      return `${this.funcs[func].displayName} ${this.funcs[func].paramsString}`;
     }
   }
 
@@ -907,7 +903,7 @@ function updateGraph () {
 
   if (ast) {
     funcsObj = new FunctionObjectCollection();
-    funcsObj.add(-1, '[Global]', '[Global]', '[Global]', [], ast[1], false);
+    funcsObj.add(-1, '[Global]', '[Global]', '[Global]', [], ast[1]);
     funcsObj.findFunctions(0, ast[1]);
     funcsObj.find_refs();
 
