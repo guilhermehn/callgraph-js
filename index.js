@@ -4,7 +4,6 @@
 // Licence CC0 1.0 Universal
 var ast;
 var showParams = true;
-var anonymousCount;
 var anonObjCount;
 var funcsObj;
 var levelsObj;
@@ -175,6 +174,8 @@ class FunctionObjectCollection {
     this.funcs = [];
     this.count = 0;
     this.duplicatedNames = '';
+    this.anonymousFunctions = 0;
+    this.anonymousObjects = 0;
   }
 
   add (parent, name, displayName, objName, params, funcBody, showParamsByDefault) {
@@ -244,8 +245,8 @@ class FunctionObjectCollection {
     }
     else if (tree[0] === 'call' && tree[1][0] === 'function') { // (function ?() {})()
       if (tree[1][1] === null) {
-        anonymousCount++;
-        name = `[Self calling anonymous function ${anonymousCount}]`;
+        this.anonymousFunctions += 1;
+        name = `[Self calling anonymous function ${this.anonymousFunctions}]`;
         tree[1][1] = name; // give anonymous function a name
         index = funcsObj.add(parent, name, name, name, tree[1][2], tree[1][3], true);
       }
@@ -264,8 +265,8 @@ class FunctionObjectCollection {
       tree[1].forEach((node) => {
         if (Array.isArray(node) && Array.isArray(node[1]) && node[1][0] === 'function') { // foo: function () {
           if (objName === '') {
-            anonObjCount++;
-            objName = `[Anonymous object ${anonObjCount}]`;
+            this.anonymousObjects += 1;
+            objName = `[Anonymous object ${this.anonymousObjects}]`;
           }
 
           index = funcsObj.add(parent, node[0], objName + '.' + node[0], objName, node[1][2], node[1][3], false);
@@ -277,8 +278,8 @@ class FunctionObjectCollection {
     }
     else if (tree[0] === 'function') {
       if (tree[1] === null) { // ? function () {
-        anonymousCount++;
-        name = `[Anonymous function ${anonymousCount}]`;
+        this.anonymousFunctions += 1;
+        name = `[Anonymous function ${this.anonymousFunctions}]`;
         index = funcsObj.add(parent, name, name, name, tree[2], tree[3], true);
         tree[1] = name; // give function a name?
       }
@@ -890,14 +891,23 @@ var graph = {
   }
 };
 
-function updateGraph () {
-  var code = document.querySelector('#edit_code').value;
+function parseAstFromCode (code) {
   document.querySelector('#warning').innerHTML = '';
 
   try {
-    ast = parse(code);
+    return parse(code);
+  }
+  catch (err) {
+    document.querySelector('#warning').innerHTML = '*Parsing Error: ' + err + '*';
+    console.error(`Parse error: ${err.message}`, err);
+  }
+}
+
+function updateGraph () {
+  ast = parseAstFromCode(document.querySelector('#edit_code').value);
+
+  if (ast) {
     funcsObj = new FunctionObjectCollection();
-    anonymousCount = 0;
     anonObjCount = 0;
     funcsObj.add(-1, '[Global]', '[Global]', '[Global]', [], ast[1], false);
     funcsObj.findFunctions(0, ast[1]);
@@ -910,10 +920,6 @@ function updateGraph () {
       graph.makeGraphData();
       graph.drawGraph();
     }
-  }
-  catch (err) {
-    document.querySelector('#warning').innerHTML = '*Parsing Error: ' + err + '*';
-    console.error(`Parse error: ${err.message}`, err);
   }
 }
 
