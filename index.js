@@ -1,9 +1,6 @@
-'use strict';
-
 // globals parse
 // Licence CC0 1.0 Universal
 var ast;
-var showParams = true;
 var funcsObj;
 var levelsObj;
 
