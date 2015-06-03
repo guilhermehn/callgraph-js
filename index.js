@@ -41,6 +41,25 @@ function hue2rgb (p, q, t) {
   return p;
 }
 
+function hslToRgb (h, s, l) {
+  let r;
+  let g;
+  let b;
+
+  if (s === 0) {
+    r = g = b = l;
+  }
+  else {
+    let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    let p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+
+  return 'rgb(' + Math.round(r * 255) + ', ' + Math.round(g * 255) + ', ' + Math.round(b * 255) + ')';
+}
+
 function getName (parent, tree) {
   if (tree[0] === 'name') {
     return {
@@ -95,18 +114,9 @@ function getName (parent, tree) {
 }
 
 function getParamsString (tree) {
-  var params = '(';
-  var p = 0;
+  let params = tree.join(', ');
 
-  for (; p < tree.length; p++) {
-    if (p > 0) {
-      params += ', ';
-    }
-
-    params += tree[p];
-  }
-
-  return params + ')';
+  return `(${params})`;
 }
 
 function twoDec (n) {
@@ -115,25 +125,6 @@ function twoDec (n) {
 
 function fourDec (n) {
   return Math.round(n * 10000) / 10000;
-}
-
-function hslToRgb (h, s, l) {
-  var r;
-  var g;
-  var b;
-
-  if (s === 0) {
-    r = g = b = l;
-  }
-  else {
-    var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    var p = 2 * l - q;
-    r = hue2rgb(p, q, h + 1 / 3);
-    g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1 / 3);
-  }
-
-  return 'rgb(' + Math.round(r * 255) + ', ' + Math.round(g * 255) + ', ' + Math.round(b * 255) + ')';
 }
 
 /*
