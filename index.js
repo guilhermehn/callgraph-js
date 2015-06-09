@@ -31,7 +31,7 @@ function hue2rgb (p, q, t) {
   }
 
   if (t < 1 / 2) {
-    return q;
+    return q;s
   }
 
   if (t < 2 / 3) {
@@ -39,6 +39,10 @@ function hue2rgb (p, q, t) {
   }
 
   return p;
+}
+
+function roundColor (color) {
+  return Math.round(color * 255);
 }
 
 function hslToRgb (h, s, l) {
@@ -52,49 +56,55 @@ function hslToRgb (h, s, l) {
   else {
     let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
     let p = 2 * l - q;
-    r = hue2rgb(p, q, h + 1 / 3);
-    g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1 / 3);
+    let hueFn = hue2rgb.bind(null, p, q);
+
+    r = roundColor(hueFn(h + 1 / 3));
+    g = roundColor(hueFn(h));
+    b = roundColor(hueFn(h - 1 / 3));
   }
 
-  return 'rgb(' + Math.round(r * 255) + ', ' + Math.round(g * 255) + ', ' + Math.round(b * 255) + ')';
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 function getName (parent, tree) {
-  if (tree[0] === 'name') {
+  let root = tree[0];
+
+  if (root === 'name') {
+    let node = tree[1];
+
     return {
       found: true,
-      name: tree[1],
-      displayName: tree[1],
-      objName: tree[1]
+      name: node,
+      displayName: node,
+      objName: node
     };
   }
-  else if (tree[0] === 'dot' && tree[1][0] === 'name') {
+  else if (root === 'dot' && tree[1][0] === 'name') {
     if (tree[1][1] === 'this') {
-      var objName = funcsObj.funcs[parent].name;
+      var name = funcsObj.funcs[parent].name;
 
       return {
         found: true,
         name: tree[2],
-        displayName: objName + '.' + tree[2],
-        objName: objName
+        displayName: `${name}.${tree[2]}`,
+        objName: name
       };
     }
     else {
       return {
         found: true,
         name: tree[2],
-        displayName: tree[1][1] + '.' + tree[2],
+        displayName: `${tree[1][1]}.${tree[2]}`,
         objName: tree[1][1]
       };
     }
   }
-  else if (tree[0] === 'dot' && tree[1][0] === 'dot' && tree[1][1][0] === 'name') {
+  else if (root === 'dot' && tree[1][0] === 'dot' && tree[1][1][0] === 'name') {
     if (tree[1][2] === 'prototype') {
       return {
         found: true,
         name: tree[2],
-        displayName: tree[1][1][1] + '.' + tree[1][2] + '.' + tree[2],
+        displayName: `${tree[1][1][1]}.${tree[1][2]}.${tree[2]}`,
         objName: tree[1][1][1]
       };
     }
@@ -102,8 +112,8 @@ function getName (parent, tree) {
       return {
         found: true,
         name: tree[2],
-        displayName: tree[1][1][1] + '.' + tree[1][2] + '.' + tree[2],
-        objName: tree[1][1][1] + '.' + tree[1][2]
+        displayName: `${tree[1][1][1]}.${tree[1][2]}.${tree[2]}`,
+        objName: `${tree[1][1][1]}.${tree[1][2]}`
       };
     }
   }
@@ -114,18 +124,19 @@ function getName (parent, tree) {
 }
 
 function getParamsString (tree) {
-  let params = tree.join(', ');
-
-  return `(${params})`;
+  return `(${tree.join(', ')})`;
 }
 
-function twoDec (n) {
-  return Math.round(n * 100) / 100;
+function createRoundToDecimalsWithLength (length) {
+  let multiplier = Math.pow(10, length);
+
+  return (n) => {
+    return Math.round(n * multiplier) / multiplier;
+  };
 }
 
-function fourDec (n) {
-  return Math.round(n * 10000) / 10000;
-}
+var twoDec = createRoundToDecimalsWithLength(2);
+var fourDec = createRoundToDecimalsWithLength(4);
 
 /*
  Classes
