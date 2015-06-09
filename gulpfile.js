@@ -8,7 +8,7 @@ gulp.task('js', function () {
     //.pipe(plugins.jscs())
     .pipe(plugins.sourcemaps.init())
     .pipe(plugins.babel())
-    .pipe(plugins.sourcemaps.write())
+    .pipe(plugins.sourcemaps.write('.'))
     .pipe(gulp.dest('dist/'))
     .pipe(plugins.livereload());
 });
